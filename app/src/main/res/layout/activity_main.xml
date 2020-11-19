@@ -47,6 +47,7 @@
             tools:layout_editor_absoluteY="89dp">
 
             <com.beardedhen.androidbootstrap.BootstrapEditText
+                android:id="@+id/mainActivity_inputCrateRoom"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_marginLeft="3dp"
@@ -59,6 +60,7 @@
                 app:roundedCorners="true" />
 
             <com.beardedhen.androidbootstrap.BootstrapButton
+                android:id="@+id/mainActivity_btnCreateRoom"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_marginTop="15dp"
@@ -73,6 +75,7 @@
     </androidx.cardview.widget.CardView>
 
     <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/mainActivity_recycleviewRoom"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="1dp"
