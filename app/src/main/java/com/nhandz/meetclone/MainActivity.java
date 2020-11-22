@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
@@ -84,6 +85,8 @@ public class MainActivity extends AppCompatActivity {
                 Log.e(TAG, "onClick: socket.connected="+mSocket.connected() );
                 if (!inputNameRoom.getText().equals("")){
                     mSocket.emit("CreateRoom",inputNameRoom.getText().toString());
+                    Intent intent = new Intent(MainActivity.this,SendCallActivity.class);
+                    startActivity(intent);
                 }
             }
         });
@@ -93,16 +96,7 @@ public class MainActivity extends AppCompatActivity {
         mSocket.emit("getRoom");
         mSocket.on("Svs_getRoom",args -> {
             JSONArray jsonArray = (JSONArray) args[0];
-            for (int i=0;i<jsonArray.length();i++){
-                try {
-                    JSONObject jsonObject=(JSONObject) jsonArray.get(i);
-                    rooms.add(new Room(String.valueOf(jsonObject.get("name")) ,String.valueOf(jsonObject.get("gId")) ,String.valueOf(jsonObject.get("key")) ));
-                    adt.notifyDataSetChanged();
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-
-            }
+            notifyRoom(jsonArray);
         });
     }
 
@@ -110,9 +104,30 @@ public class MainActivity extends AppCompatActivity {
         recyclerViewRoom=findViewById(R.id.mainActivity_recycleviewRoom);
         btnCreateRoom=findViewById(R.id.mainActivity_btnCreateRoom);
         inputNameRoom=findViewById(R.id.mainActivity_inputCrateRoom);
-        initrecycleViewRoom();
+        initRecycleViewRoom();
     }
-    public void initrecycleViewRoom(){
+
+    public void notifyRoom(JSONArray jsonArray){
+        for (int i=0;i<jsonArray.length();i++){
+            try {
+                JSONObject jsonObject=(JSONObject) jsonArray.get(i);
+                Log.e(TAG, "notifyRoom: "+jsonObject.toString() );
+                rooms.add(new Room(String.valueOf(jsonObject.get("name")) ,String.valueOf(jsonObject.get("gId")) ,String.valueOf(jsonObject.get("key")) ));
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        adt.notifyDataSetChanged();
+                    }
+                });
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
+    public void initRecycleViewRoom(){
         recyclerViewRoom.setHasFixedSize(true);
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(MainActivity.this, LinearLayoutManager.VERTICAL, false);
         recyclerViewRoom.setLayoutManager(linearLayoutManager);

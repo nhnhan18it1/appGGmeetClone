@@ -1,6 +1,7 @@
 package com.nhandz.meetclone.Adapter;
 
 import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,6 +14,7 @@ import com.beardedhen.androidbootstrap.BootstrapButton;
 import com.nhandz.meetclone.MainActivity;
 import com.nhandz.meetclone.Obj.Room;
 import com.nhandz.meetclone.R;
+import com.nhandz.meetclone.SendCallActivity;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -44,12 +46,11 @@ public class Adapter_Room extends RecyclerView.Adapter<Adapter_Room.ViewHolder> 
             @Override
             public void onClick(View view) {
                 JSONObject jsonObject=new JSONObject();
-                try {
-                    jsonObject.put("gId",rooms.get(position).getgId());
-                    MainActivity.mSocket.emit("joinRoom",jsonObject);
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
+
+                Intent intent = new Intent(context, SendCallActivity.class);
+                intent.putExtra("romName",rooms.get(position).getTitle());
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
 
             }
         });

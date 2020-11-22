@@ -61,6 +61,9 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
     private static final int ALL_PERMISSIONS_CODE = 1 ;
     private String TAG=getClass().getSimpleName();
 
+    public static ArrayList<String> peers;
+    public static String roomName;
+
     List<PeerConnection.IceServer> peericeServers=new ArrayList<>();
     List<IceServer> iceServers;
     PeerConnectionFactory peerConnectionFactory;
@@ -79,16 +82,14 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
     boolean gotUserMedia;
 
     PeerConnection localPeer, remotePeer;
-    Button create, join, start, trystart;
+    Button create, join, offer, trystart;
     EditText txtname;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-//        getWindow().requestFeature(Window.FEATURE_ACTION_BAR);
-//        getActionBar().hide();
         setContentView(R.layout.activity_rcall);
-        //Toast.makeText(this, "main2", Toast.LENGTH_SHORT).show();
+
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
                 || ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO}, ALL_PERMISSIONS_CODE);
@@ -96,9 +97,12 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
             // all permissions already granted
             start();
         }
+
+        Intent intent=getIntent();
+        roomName = intent.getStringExtra("romName");
         create=findViewById(R.id.button_create);
         join=findViewById(R.id.button_join);
-        start=findViewById(R.id.button_start);
+        offer=findViewById(R.id.button_start);
         //txtname=findViewById(R.id.txt_name);
         trystart=findViewById(R.id.trytostart);
         SignallingClient.getInstance().context=getApplicationContext();
@@ -113,10 +117,10 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
         join.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                SignallingClient.getInstance().emitInitStatement_join("123");
+                SignallingClient.getInstance().emitInitStatement_join();
             }
         });
-        start.setOnClickListener(new View.OnClickListener() {
+        offer.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 //SignallingClient.getInstance().emitMessage("get user media");
@@ -130,53 +134,9 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
                 onTryToStart();
             }
         });
-        Intent intent=getIntent();
-//        if (intent.getStringExtra("Type").equals("R")){
-//            try {
-//
-//                JSONObject jsonObject=new JSONObject(intent.getStringExtra("data"));
-//                //SignallingClient.getInstance().emitInitStatement_join(jsonObject.getString("IDS")+MainActivity.OnAccount.getID());
-//                SignallingClient.getInstance().isStarted=false;
-//                onTryToStart();
-//                Log.e(TAG, "onCreate: onJoin-R" );
-//
-//            } catch (JSONException e) {
-//                e.printStackTrace();
-//            }
-//
-//        }
-//        else if (intent.getStringExtra("Type").equals("S")){
-//            SignallingClient.getInstance().emitInitStatement_create(MainActivity.OnAccount.getID()+intent.getStringExtra("ID"));
-//            JSONObject jsonObject=new JSONObject();
-//            try {
-//                jsonObject.put("IDNG", String.valueOf(MainActivity.OnAccount.getID()));
-//                jsonObject.put("Avt",MainActivity.OnAccount.getAvt());
-//                jsonObject.put("name",MainActivity.OnAccount.getName());
-//                jsonObject.put("IDNN",intent.getStringExtra("ID"));
-//                Log.e(TAG, "onCreate: "+jsonObject.toString() );
-//                MainActivity.mSocket.emit("request_to",jsonObject);
-//            } catch (JSONException e) {
-//                e.printStackTrace();
-//            }
-//
-//
-//            MainActivity.mSocket.on("join", new Emitter.Listener() {
-//                @Override
-//                public void call(Object... args) {
-//                    Log.e(TAG, "call: joined" );
-//                    SignallingClient.getInstance().isStarted=false;
-//                    onTryToStart();
-//                    //scall();
-//                    //call();
-//                }
-//            });
-//        }
 
-        //call();
-    }
 
-    public void scall(){
-        call();
+
     }
 
     @Override
@@ -206,7 +166,7 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
             @Override
             public void onResponse(Call<TurnServerPojo> call, Response<TurnServerPojo> response) {
                 TurnServerPojo body=response.body();
-                Log.e("main2","getIce"+body);
+
                 if (body!=null){
                     iceServers=body.iceServerList.iceServers;
                 }
@@ -223,7 +183,7 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
                                 .createIceServer();
                         peericeServers.add(iceServer1);
                     }
-                    Log.e("onApiResponse", "IceServers--"+peericeServers.size()+"--" + iceServers.toString());
+                    Log.e("onApiResponse", "IceServers--"+peericeServers.size()+"--");
                 }
             }
 
@@ -250,24 +210,17 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
     }
 
     private void start(){
-
-        //getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
+        Log.e(TAG, "start: isStarted" );
         getIceServers();
-//        VideoCapturer ss =createCameraCapturer(new Camera1Enumerator(false));
-//        if (ss!=null){
-//            videoCapturer=ss;
-//            Log.e("TAG", "VideoCapturer: != null" );
-//        }
-//        else {
-//            Log.e("TAG", "VideoCapturer: == null" );
-//
-//        }
-
         initVideos();
-
         videoCapturer=createCameraCapturer(new Camera1Enumerator(false));;
-        PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(this).setEnableInternalTracer(true).createInitializationOptions());
+        PeerConnectionFactory.initialize(
+                PeerConnectionFactory
+                        .InitializationOptions
+                        .builder(this)
+                        .setEnableInternalTracer(true)
+                        .setFieldTrials("WebRTC-H264HighProfile/Enabled/")
+                        .createInitializationOptions());
         //peerConnectionFactory=PeerConnectionFactory.builder().createPeerConnectionFactory();
 
 
@@ -313,7 +266,9 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
 
 
         gotUserMedia=true;
+//        SignallingClient.getInstance().isInitiator=true;
         if (SignallingClient.getInstance().isInitiator){
+            Log.e(TAG, "start: onTryToStart"+SignallingClient.getInstance().isInitiator );
             onTryToStart();
         }
         //onTryToStart();
@@ -484,78 +439,6 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
         rtcConfig.continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY;
         // Use ECDSA encryption.
         rtcConfig.keyType = PeerConnection.KeyType.ECDSA;
-//        localPeer= peerConnectionFactory.createPeerConnection(peericeServers, new PeerConnection.Observer() {
-//            @Override
-//            public void onSignalingChange(PeerConnection.SignalingState signalingState) {
-//
-//            }
-//
-//            @Override
-//            public void onIceConnectionChange(PeerConnection.IceConnectionState iceConnectionState) {
-//
-//            }
-//
-//            @Override
-//            public void onIceConnectionReceivingChange(boolean b) {
-//
-//            }
-//
-//            @Override
-//            public void onIceGatheringChange(PeerConnection.IceGatheringState iceGatheringState) {
-//
-//            }
-//
-//            @Override
-//            public void onIceCandidate(IceCandidate iceCandidate) {
-//                onIceCandidateReceived(localPeer,iceCandidate);
-//                Log.e("main2", "createPeerConnection: "+iceCandidate );
-//            }
-//
-//            @Override
-//            public void onIceCandidatesRemoved(IceCandidate[] iceCandidates) {
-//
-//            }
-//
-//            @Override
-//            public void onAddStream(MediaStream mediaStream) {
-//                Log.e("main2", "onAddStream: Received Remote stream"+mediaStream );
-//                gotRemoteStream(mediaStream);
-//            }
-//
-//            @Override
-//            public void onRemoveStream(MediaStream mediaStream) {
-//
-//            }
-//
-//            @Override
-//            public void onDataChannel(DataChannel dataChannel) {
-//
-//            }
-//
-//            @Override
-//            public void onRenegotiationNeeded() {
-//
-//            }
-//
-//            @Override
-//            public void onAddTrack(RtpReceiver rtpReceiver, MediaStream[] mediaStreams) {
-//                final VideoTrack videoTrack = mediaStreams[0].videoTracks.get(0);
-//                AudioTrack audioTrack = mediaStreams[0].audioTracks.get(0);
-//                runOnUiThread(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        try {
-//                            //remoteRenderer = new VideoRenderer(remoteVideoView);
-//                            remoteVideoView.setVisibility(View.VISIBLE);
-//                            videoTrack.addSink(remoteVideoView);
-//
-//                        } catch (Exception e) {
-//                            e.printStackTrace();
-//                        }
-//                    }
-//                });
-//            }
-//        });
         localPeer = peerConnectionFactory.createPeerConnection(peericeServers, new CustomPeerConnectionObserver("localPeerCreation"){
             @Override
             public void onIceCandidate(IceCandidate iceCandidate) {
@@ -583,7 +466,10 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
             @Override
             public void onCreateSuccess(SessionDescription sessionDescription) {
                 super.onCreateSuccess(sessionDescription);
-                localPeer.setLocalDescription(new CustomSdpObserver("localSetLocal"), sessionDescription);
+                localPeer.setLocalDescription(
+                        new CustomSdpObserver("localSetLocal"),
+                        sessionDescription
+                );
                 SignallingClient.getInstance().emitMessage(sessionDescription);
             }
 
@@ -609,7 +495,13 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
             }
 
             try {
-                localPeer.setRemoteDescription(new CustomSdpObserver("localSetRemote"), new SessionDescription(SessionDescription.Type.OFFER, data.getString("sdp")));
+                localPeer.setRemoteDescription(
+                        new CustomSdpObserver("localSetRemote"),
+                        new SessionDescription(
+                                SessionDescription.Type.OFFER,
+                                data.getString("sdp")
+                        )
+                );
                 doAnswer();
                 //updateVideoViews(true);
             } catch (JSONException e) {
@@ -624,7 +516,15 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
     public void onAnswerReceived(JSONObject data) {
         Log.e("main2", "onAnswerReceived: "+data);
         try {
-            localPeer.setRemoteDescription(new CustomSdpObserver("localSetRemote"), new SessionDescription(SessionDescription.Type.fromCanonicalForm(data.getString("type").toLowerCase()), data.getString("sdp")));
+            localPeer.setRemoteDescription(
+                    new CustomSdpObserver("localSetRemote"),
+                    new SessionDescription(
+                            SessionDescription
+                                    .Type.fromCanonicalForm(data.getString("type")
+                                    .toLowerCase()),
+                            data.getString("sdp")
+                    )
+            );
             updateVideoViews(true);
         } catch (JSONException e) {
             e.printStackTrace();
@@ -667,7 +567,7 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
         //Toast.makeText(getApplicationContext(), "You create a romm "+gotUserMedia, Toast.LENGTH_SHORT).show();
         Log.e("main2", "onCreatedRoom: "+gotUserMedia);
         if (gotUserMedia){
-            SignallingClient.getInstance().emitMessage("get user media");
+//            SignallingClient.getInstance().emitMessage("get user media");
         }
     }
 
@@ -676,7 +576,7 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
         //Toast.makeText(this, "You join a romm "+gotUserMedia, Toast.LENGTH_SHORT).show();
         Log.e("main2", "onJoinedRoom: "+gotUserMedia );
         if (gotUserMedia){
-            SignallingClient.getInstance().emitMessage("get user media");
+//            SignallingClient.getInstance().emitMessage("get user media");
         }
     }
 

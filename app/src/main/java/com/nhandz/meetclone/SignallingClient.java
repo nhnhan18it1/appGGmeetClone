@@ -14,6 +14,7 @@ import java.net.URISyntaxException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import javax.net.ssl.SSLContext;
@@ -36,13 +37,14 @@ import io.socket.emitter.Emitter;
 class SignallingClient {
     private static SignallingClient instance;
     private String roomName = "123";
-    public Socket socket= clientConfig.mSocket;
-    private String ServerNode=clientConfig.NodeServer;
+    public Socket socket= MainActivity.mSocket;
+    private String ServerNode=MainActivity.NodeServer;
     boolean isChannelReady = true;
     boolean isInitiator = false;
     boolean isStarted = false;
     Context context;
     private SignalingInterface callback;
+    private String TAG = getClass().getSimpleName();
 
     //This piece of code should not go into production!!
     //This will help in cases where the node server is running in non-https server and you want to ignore the warnings
@@ -73,13 +75,14 @@ class SignallingClient {
     }
 
     public void init(SignalingInterface signalingInterface) {
+        SendCallActivity.peers=new ArrayList<>();
         this.callback = signalingInterface;
         try {
-            SSLContext sslcontext = SSLContext.getInstance("TLS");
-            sslcontext.init(null, trustAllCerts, null);
-
-            IO.setDefaultHostnameVerifier((hostname, session) -> true);
-            IO.setDefaultSSLContext(sslcontext);
+//            SSLContext sslcontext = SSLContext.getInstance("TLS");
+//            sslcontext.init(null, trustAllCerts, null);
+//
+//            IO.setDefaultHostnameVerifier((hostname, session) -> true);
+//            IO.setDefaultSSLContext(sslcontext);
             //set the socket.io url here
 
             if (socket==null){
@@ -105,17 +108,24 @@ class SignallingClient {
                 }
             });
 
-            //room is full event
-            socket.on("full", args -> Log.e("SignallingClient", "full call() called with: args = [" + Arrays.toString(args) + "]"));
-
             //peer joined event
-            socket.on("join", new Emitter.Listener() {
+            socket.on("initReceive", new Emitter.Listener() {
                 @Override
                 public void call(Object... args) {
-                    Log.e("SignallingClient-join", "join call() called with: args = [" + Arrays.toString(args) + "]");
+                    SendCallActivity.peers.add(String.valueOf(args[0])) ;
+                    Log.e(TAG, "INIT RECEIVE "+SendCallActivity.peers.size());
                     isChannelReady = true;
+                    isInitiator=true;
                     callback.onNewPeerJoined();
+                    socket.emit("initSend",String.valueOf(args[0]));
                 }
+            });
+
+            socket.on("initSend",args -> {
+                SendCallActivity.peers.add(String.valueOf(args[0])) ;
+                Log.e(TAG, "init: INIT SEND "+args[0] );
+                isInitiator = true;
+                callback.onCreatedRoom();
             });
 
             //when you joined a chat room successfully
@@ -124,16 +134,12 @@ class SignallingClient {
                 isChannelReady = true;
                 callback.onJoinedRoom();
             });
-
-            //log event
-            socket.on("log", args -> Log.e("SignallingClient-log", "log call() called with: args = [" + Arrays.toString(args) + "]"));
-
             //bye event
             //socket.on("bye", args -> callback.onRemoteHangUp((String) args[0]));
 
             //messages - SDP and ICE candidates are transferred through this
-            socket.on("message", args -> {
-                Log.e("SignallingClient", "message call() called with: args = [" + Arrays.toString(args) + "]");
+            socket.on("signal", args -> {
+                Log.e(TAG+"- signal", "message call() called with: args = [" + Arrays.toString(args) + "]");
                 if (args[0] instanceof String) {
                     Log.e("SignallingClient", "String received :: " + args[0]);
                     String data = (String) args[0];
@@ -145,8 +151,8 @@ class SignallingClient {
                     }
                 } else if (args[0] instanceof JSONObject) {
                     try {
-
-                        JSONObject data = (JSONObject) args[0];
+                        JSONObject dtSignal=(JSONObject) args[0];
+                        JSONObject data =(JSONObject) dtSignal.get("signal");
                         Log.e("SignallingClient", "Json Received :: " + data.toString());
                         String type = data.getString("type");
                         if (type.equalsIgnoreCase("offer")) {
@@ -162,29 +168,38 @@ class SignallingClient {
                     }
                 }
             });
-            socket.on("carSendCandidate", args -> {
-                JSONObject jsonObject= (JSONObject) args[0];
-                callback.onIceCandidateReceived(jsonObject);
+
+
+            socket.on("joinRoomSucess",args -> {
+               if ((int)args[0]!= -1){
+                   Log.e(TAG, "init: JOIN ROOM SUCCESS "+args[0] );
+                   socket.emit("clientReadyGroup",args[0]);
+                   callback.onTryToStart();
+               }
             });
-        } catch (URISyntaxException | NoSuchAlgorithmException | KeyManagementException e) {
+            emitInitStatement_join();
+        } catch (URISyntaxException  e) {
             e.printStackTrace();
         }
     }
+
 
     public void emitInitStatement_create(String message) {
         Log.e("SignallingClient", "emitInitStatement() called with: event = [" + "create" + "], message = [" + message + "]");
         socket.emit("create", message);
     }
 
-    public void emitInitStatement_join(String message) {
-        Log.e("SignallingClient", "emitInitStatement() called with: event = [" + "join" + "], message = [" + message + "]");
-        socket.emit("join", message);
+    public void emitInitStatement_join() {
+        JSONObject jsonObject =new JSONObject();
+        try {
+            jsonObject.put("gId",SendCallActivity.roomName);
+            MainActivity.mSocket.emit("joinRoom",jsonObject);
+            Log.e(TAG, "emitInitStatement_join: "+SendCallActivity.roomName );
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 
-    public void emitMessage(String message) {
-        Log.e("SignallingClient", "emitMessage() called with: message = [" + message + "]");
-        socket.emit("message", message);
-    }
 
     public void emitMessage(SessionDescription message) {
         try {
@@ -192,8 +207,11 @@ class SignallingClient {
             JSONObject obj = new JSONObject();
             obj.put("type", message.type.canonicalForm());
             obj.put("sdp", message.description);
-            Log.e("emitMessage-vivek1794", obj.toString());
-            socket.emit("message", obj);
+            JSONObject signal=new JSONObject();
+            signal.put("signal",obj);
+            signal.put("socket_id",SendCallActivity.peers.get(0));
+            Log.e("emitMessage-vivek1794", signal.toString());
+            socket.emit("signal", signal);
 
         } catch (JSONException e) {
             e.printStackTrace();
@@ -204,10 +222,13 @@ class SignallingClient {
         try {
             JSONObject object = new JSONObject();
             object.put("type", "candidate");
-            object.put("label", iceCandidate.sdpMLineIndex);
-            object.put("id", iceCandidate.sdpMid);
+            object.put("sdpMLineIndex", iceCandidate.sdpMLineIndex);
+            object.put("sdpMid", iceCandidate.sdpMid);
             object.put("candidate", iceCandidate.sdp);
-            socket.emit("message", object);
+            JSONObject signal = new JSONObject();
+            signal.put("signal",object);
+            signal.put("socket_id",socket.id());
+            socket.emit("signal", signal);
             Log.e("Sinal-emitIce: " ," "+iceCandidate.toString());
         } catch (Exception e) {
             e.printStackTrace();
