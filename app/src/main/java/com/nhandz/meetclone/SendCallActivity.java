@@ -17,6 +17,11 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.nhandz.meetclone.Adapter.Adapter_peer;
+import com.nhandz.meetclone.Obj.Connector;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -63,6 +68,10 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
 
     public static ArrayList<String> peers;
     public static String roomName;
+
+    private RecyclerView rcvPeer;
+    private ArrayList<Connector> connectors;
+    private Adapter_peer adt;
 
     List<PeerConnection.IceServer> peericeServers=new ArrayList<>();
     List<IceServer> iceServers;
@@ -206,7 +215,20 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
         remoteVideoView.init(eglBase.getEglBaseContext(), null);
         localVideoView.setMirror(true);
         localVideoView.setZOrderMediaOverlay(true);
+        rcvPeer = findViewById(R.id.rcv_listPeer);
+        initRe();
 //        remoteVideoView.setZOrderMediaOverlay(true);
+    }
+
+    public void initRe(){
+        rcvPeer.setHasFixedSize(true);
+        LinearLayoutManager linearLayoutManager =
+                new LinearLayoutManager(getApplicationContext(),LinearLayoutManager.HORIZONTAL,false);
+        rcvPeer.setLayoutManager(linearLayoutManager);
+        connectors=new ArrayList<>();
+        adt=new Adapter_peer(connectors,this,eglBase);
+
+        rcvPeer.setAdapter(adt);
     }
 
     private void start(){
@@ -389,21 +411,26 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
 
     private void gotRemoteStream(MediaStream stream) {
         //we have remote video stream. add to the renderer.
-        final VideoTrack videoTrack = stream.videoTracks.get(0);
+        VideoTrack videoTrack = stream.videoTracks.get(0);
         AudioTrack audioTrack = stream.audioTracks.get(0);
+        Log.e(TAG, "gotRemoteStream: "+stream.toString() );
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    //remoteRenderer = new VideoRenderer(remoteVideoView);
+//                   remoteVideoView = new VideoRenderer(remoteVideoView);
                     remoteVideoView.setVisibility(View.VISIBLE);
                     videoTrack.addSink(remoteVideoView);
+                    connectors.add(new Connector(localPeer,peers.get(0),stream));
+                    adt.notifyDataSetChanged();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
         });
 
+
+        Log.e(TAG, "gotRemoteStream: "+stream.toString() );
     }
 
     private void addStreamToLocalPeer() {
