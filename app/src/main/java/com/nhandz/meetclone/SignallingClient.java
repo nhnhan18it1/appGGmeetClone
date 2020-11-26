@@ -5,6 +5,8 @@ import android.content.Context;
 import android.os.AsyncTask;
 import android.util.Log;
 
+import com.nhandz.meetclone.Obj.Connector;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.webrtc.IceCandidate;
@@ -16,6 +18,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -45,6 +48,7 @@ class SignallingClient {
     Context context;
     private SignalingInterface callback;
     private String TAG = getClass().getSimpleName();
+    public HashMap<String, Connector> connectorHashMap;
 
     //This piece of code should not go into production!!
     //This will help in cases where the node server is running in non-https server and you want to ignore the warnings
@@ -76,6 +80,7 @@ class SignallingClient {
 
     public void init(SignalingInterface signalingInterface) {
         SendCallActivity.peers=new ArrayList<>();
+        connectorHashMap = new HashMap<>();
         this.callback = signalingInterface;
         try {
 //            SSLContext sslcontext = SSLContext.getInstance("TLS");

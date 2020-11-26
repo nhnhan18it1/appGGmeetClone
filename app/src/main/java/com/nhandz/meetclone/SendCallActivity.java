@@ -428,7 +428,7 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
                 }
             }
         });
-
+        call();
 
         Log.e(TAG, "gotRemoteStream: "+stream.toString() );
     }

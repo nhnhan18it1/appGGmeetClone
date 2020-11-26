@@ -5,6 +5,8 @@ import android.view.View;
 
 import com.nhandz.meetclone.CustomPeerConnectionObserver;
 import com.nhandz.meetclone.CustomSdpObserver;
+import com.nhandz.meetclone.MainActivity;
+import com.nhandz.meetclone.SendCallActivity;
 
 
 import org.json.JSONException;
@@ -21,6 +23,8 @@ import org.webrtc.VideoTrack;
 import java.util.List;
 
 
+import io.socket.client.Socket;
+
 import static com.nhandz.meetclone.SendCallActivity.peers;
 
 public class SimplePeer  {
@@ -33,6 +37,7 @@ public class SimplePeer  {
     private String socketId;
     private String TAG = getClass().getSimpleName();
     private MediaConstraints sdpConstraints;
+    private Socket socket;
 
 
     public SimplePeer(MediaStream localStream, boolean initiator, PeerConnectionFactory peerConnectionFactory, List<PeerConnection.IceServer> iceServers, String socketId) {
@@ -41,8 +46,54 @@ public class SimplePeer  {
         this.peerConnectionFactory = peerConnectionFactory;
         this.iceServers = iceServers;
         this.socketId = socketId;
+        socket= MainActivity.mSocket;
         //SignallingClient.getInstance().init(this);
         onTryToStart();
+    }
+
+    public void init(){
+        Log.e(TAG, "init: simplePeer :: "+socketId );
+        socket.on("signal", args -> {
+            Log.e(TAG+"- signal", "message call() called with: args = ");
+
+            try {
+                JSONObject dtSignal=(JSONObject) args[0];
+                JSONObject data =(JSONObject) dtSignal.get("signal");
+                Log.e("SignallingClient", "Json Received :: " + data.toString());
+                String type = null;
+                type = data.getString("type");
+                if (dtSignal.getString("socket_id").equals(socketId)){
+                    if (type.equalsIgnoreCase("offer")) {
+                        onOfferReceived(data);
+                    } else if (type.equalsIgnoreCase("answer")) {
+                        onAnswerReceived(data);
+                    } else if (type.equalsIgnoreCase("candidate")) {
+                        onIceCandidateReceived(data);
+                    }
+                }
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+        });
+    }
+
+    public void emitMessage(SessionDescription message) {
+        try {
+            Log.e("SignallingClient", "emitMessage() called with: message = [" + message + "]");
+            JSONObject obj = new JSONObject();
+            obj.put("type", message.type.canonicalForm());
+            obj.put("sdp", message.description);
+            JSONObject signal=new JSONObject();
+            signal.put("signal",obj);
+            signal.put("socket_id", SendCallActivity.peers.get(0));
+            Log.e("emitMessage-vivek1794", signal.toString());
+            socket.emit("signal", signal);
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 
     private void call(){
@@ -141,12 +192,12 @@ public class SimplePeer  {
 
 
     //@Override
-    public void onRemoteHangUp(String msg, String socketId) {
+    public void onRemoteHangUp(String msg) {
 
     }
 
     //@Override
-    public void onOfferReceived(JSONObject data, String socketId) {
+    public void onOfferReceived(JSONObject data) {
         if (peerConnection==null)createPeerConnection();
         try {
             peerConnection.setRemoteDescription(
@@ -163,7 +214,7 @@ public class SimplePeer  {
     }
 
     //@Override
-    public void onAnswerReceived(JSONObject data, String socketId) {
+    public void onAnswerReceived(JSONObject data) {
         Log.e(TAG, "onAnswerReceived: "+data);
         try {
             peerConnection.setRemoteDescription(
@@ -180,7 +231,7 @@ public class SimplePeer  {
     }
 
     //@Override
-    public void onIceCandidateReceived(JSONObject data, String socketId) {
+    public void onIceCandidateReceived(JSONObject data) {
         Log.e(TAG, "onIceCandidateReceived: "+data);
         try {
             peerConnection.addIceCandidate(
