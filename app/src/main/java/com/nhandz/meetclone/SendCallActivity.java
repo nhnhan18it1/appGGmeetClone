@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.nhandz.meetclone.Adapter.Adapter_peer;
 import com.nhandz.meetclone.Obj.Connector;
+import com.nhandz.meetclone.Obj.SimplePeer;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -51,6 +52,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 import io.socket.emitter.Emitter;
 import okhttp3.MultipartBody;
@@ -70,12 +72,12 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
     public static String roomName;
 
     private RecyclerView rcvPeer;
-    private ArrayList<Connector> connectors;
-    private Adapter_peer adt;
+    public static ArrayList<Connector> connectors;
+    private static Adapter_peer adt;
 
-    List<PeerConnection.IceServer> peericeServers=new ArrayList<>();
+    public static List<PeerConnection.IceServer> peericeServers=new ArrayList<>();
     List<IceServer> iceServers;
-    PeerConnectionFactory peerConnectionFactory;
+    public static PeerConnectionFactory peerConnectionFactory;
     MediaConstraints audioConstraints;
     MediaConstraints videoConstraints;
     MediaConstraints sdpConstraints;
@@ -83,7 +85,7 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
     VideoTrack localvideoTrack;
     AudioSource audioSource;
     AudioTrack localAudioTrack;
-
+    public static MediaStream localStream;
     SurfaceViewRenderer localVideoView;
     SurfaceViewRenderer remoteVideoView;
     VideoCapturer videoCapturer;
@@ -114,8 +116,7 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
         offer=findViewById(R.id.button_start);
         //txtname=findViewById(R.id.txt_name);
         trystart=findViewById(R.id.trytostart);
-        SignallingClient.getInstance().context=getApplicationContext();
-        SignallingClient.getInstance().init(this);
+
         create.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -133,7 +134,13 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
             @Override
             public void onClick(View v) {
                 //SignallingClient.getInstance().emitMessage("get user media");
-                call();
+                SignallingClient.getInstance().connectorHashMap.forEach(new BiConsumer<String, SimplePeer>() {
+                    @Override
+                    public void accept(String s, SimplePeer simplePeer) {
+                        simplePeer.call();
+                    }
+                });
+                //call();
             }
         });
         trystart.setOnClickListener(new View.OnClickListener() {
@@ -163,7 +170,7 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
         }
     }
 
-    private void getIceServers() {
+    private void getIceServers(SignallingClient.SignalingInterface signalingInterface) {
         byte[] data = new byte[0];
         try {
             data = ("nhavbnm:feffd4ec-afd5-11ea-b23e-0242ac150003").getBytes("UTF-8");
@@ -193,7 +200,11 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
                         peericeServers.add(iceServer1);
                     }
                     Log.e("onApiResponse", "IceServers--"+peericeServers.size()+"--");
+
                 }
+                SignallingClient.getInstance().context=getApplicationContext();
+                SignallingClient.getInstance().init(signalingInterface);
+
             }
 
 
@@ -204,6 +215,7 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
                 Log.e("onApiResponse-false", "IceServers"+t.getMessage() );
             }
         });
+
     }
 
     private void initVideos() {
@@ -231,9 +243,15 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
         rcvPeer.setAdapter(adt);
     }
 
+    public void setLocalStream(){
+        localStream = peerConnectionFactory.createLocalMediaStream("102");
+        localStream.addTrack(localAudioTrack);
+        localStream.addTrack(localvideoTrack);
+    }
+
     private void start(){
         Log.e(TAG, "start: isStarted" );
-        getIceServers();
+
         initVideos();
         videoCapturer=createCameraCapturer(new Camera1Enumerator(false));;
         PeerConnectionFactory.initialize(
@@ -288,13 +306,14 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
 
 
         gotUserMedia=true;
+        setLocalStream();
 //        SignallingClient.getInstance().isInitiator=true;
         if (SignallingClient.getInstance().isInitiator){
             Log.e(TAG, "start: onTryToStart"+SignallingClient.getInstance().isInitiator );
             onTryToStart();
         }
         //onTryToStart();
-
+        getIceServers(this);
     }
 
 
@@ -385,6 +404,7 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
 
         return null;
     }
+
     public void onIceCandidateReceived(PeerConnection localPeer, IceCandidate iceCandidate) {
         //we have received ice candidate. We can set it to the other peer.
         SignallingClient.getInstance().emitIceCandidate(iceCandidate);
@@ -423,14 +443,15 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
                     videoTrack.addSink(remoteVideoView);
                     connectors.add(new Connector(localPeer,peers.get(0),stream));
                     adt.notifyDataSetChanged();
+                    //peers.remove(0);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
         });
         call();
-
         Log.e(TAG, "gotRemoteStream: "+stream.toString() );
+
     }
 
     private void addStreamToLocalPeer() {
@@ -562,7 +583,10 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
     public void onIceCandidateReceived(JSONObject data) {
         Log.e("main2", "onIceCandidateReceived: "+data );
         try {
-            localPeer.addIceCandidate(new IceCandidate(data.getString("id"), data.getInt("label"), data.getString("candidate")));
+            localPeer.addIceCandidate(new IceCandidate(
+                    data.getString("sdpMid"),
+                    data.getInt("sdpMLineIndex"),
+                    data.getString("candidate")));
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -613,4 +637,25 @@ public class SendCallActivity extends AppCompatActivity implements SignallingCli
         Log.e("mai2", "onNewPeerJoined: " );
     }
 
+    public static class addRenderFromRemoteStram extends AsyncTask<Void,String,Void>{
+
+        private Connector connector;
+
+        public addRenderFromRemoteStram(Connector connector) {
+            this.connector = connector;
+        }
+
+        @Override
+        protected Void doInBackground(Void[] voids) {
+            connectors.add(connector);
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            adt.notifyDataSetChanged();
+        }
+    }
 }

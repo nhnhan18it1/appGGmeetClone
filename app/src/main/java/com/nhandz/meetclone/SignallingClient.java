@@ -6,6 +6,7 @@ import android.os.AsyncTask;
 import android.util.Log;
 
 import com.nhandz.meetclone.Obj.Connector;
+import com.nhandz.meetclone.Obj.SimplePeer;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -48,7 +49,7 @@ class SignallingClient {
     Context context;
     private SignalingInterface callback;
     private String TAG = getClass().getSimpleName();
-    public HashMap<String, Connector> connectorHashMap;
+    public  HashMap<String, SimplePeer> connectorHashMap;
 
     //This piece of code should not go into production!!
     //This will help in cases where the node server is running in non-https server and you want to ignore the warnings
@@ -118,11 +119,22 @@ class SignallingClient {
                 @Override
                 public void call(Object... args) {
                     SendCallActivity.peers.add(String.valueOf(args[0])) ;
-                    Log.e(TAG, "INIT RECEIVE "+SendCallActivity.peers.size());
+                    Log.e(TAG, "INIT RECEIVE "+connectorHashMap.size());
                     isChannelReady = true;
                     isInitiator=true;
-                    callback.onNewPeerJoined();
+                    //callback.onNewPeerJoined();
+                    SimplePeer simplePeer=new SimplePeer(
+                            SendCallActivity.localStream,
+                            true,
+                            SendCallActivity.peerConnectionFactory,
+                            SendCallActivity.peericeServers,
+                            String.valueOf(args[0])
+                    );
+                    connectorHashMap.put(String.valueOf(args[0]),simplePeer);
                     socket.emit("initSend",String.valueOf(args[0]));
+                    Log.e(TAG, "INIT RECEIVE "+connectorHashMap.size());
+                    Log.e(TAG, "init: initReceive "+String.valueOf(args[0]) );
+
                 }
             });
 
@@ -131,6 +143,16 @@ class SignallingClient {
                 Log.e(TAG, "init: INIT SEND "+args[0] );
                 isInitiator = true;
                 callback.onCreatedRoom();
+                SimplePeer simplePeer=new SimplePeer(
+                        SendCallActivity.localStream,
+                        true,
+                        SendCallActivity.peerConnectionFactory,
+                        SendCallActivity.peericeServers,
+                        String.valueOf(args[0])
+                );
+                connectorHashMap.put(String.valueOf(args[0]).trim(),simplePeer);
+                Log.e(TAG, "init: initSend "+String.valueOf(args[0]) );
+                //callback.onTryToStart();
             });
 
             //when you joined a chat room successfully
@@ -145,33 +167,43 @@ class SignallingClient {
             //messages - SDP and ICE candidates are transferred through this
             socket.on("signal", args -> {
                 Log.e(TAG+"- signal", "message call() called with: args = [" + Arrays.toString(args) + "]");
-                if (args[0] instanceof String) {
-                    Log.e("SignallingClient", "String received :: " + args[0]);
-                    String data = (String) args[0];
-                    if (data.equalsIgnoreCase("got user media")) {
-                        callback.onTryToStart();
-                    }
-                    if (data.equalsIgnoreCase("bye")) {
-                        callback.onRemoteHangUp(data);
-                    }
-                } else if (args[0] instanceof JSONObject) {
-                    try {
+                try {
+
+//                    if (connectorHashMap.get(socketId)!=null){
+//                        connectorHashMap.get(socketId).signal(data);
+//                    }
+
+                    if (args[0] instanceof String) {
+                        Log.e("SignallingClient", "String received :: " + args[0]);
+//                        String data = (String) args[0];
+//                        if (data.equalsIgnoreCase("got user media")) {
+//                            callback.onTryToStart();
+//                        }
+//                        if (data.equalsIgnoreCase("bye")) {
+//                            callback.onRemoteHangUp(data);
+//                        }
+                    } else if (args[0] instanceof JSONObject) {
                         JSONObject dtSignal=(JSONObject) args[0];
                         JSONObject data =(JSONObject) dtSignal.get("signal");
-                        Log.e("SignallingClient", "Json Received :: " + data.toString());
+                        String socketId = (String) dtSignal.get("socket_id");
                         String type = data.getString("type");
-                        if (type.equalsIgnoreCase("offer")) {
-                            callback.onOfferReceived(data);
-                        } else if (type.equalsIgnoreCase("answer") && isStarted) {
-                            callback.onAnswerReceived(data);
-                        } else if (type.equalsIgnoreCase("candidate") && isStarted) {
-                            callback.onIceCandidateReceived(data);
-                        }
+                        Log.e(TAG, "init: " + socketId);
 
-                    } catch (JSONException e) {
-                        e.printStackTrace();
+                        Log.e(TAG, "init: connectorHashMap " + connectorHashMap.get(socketId));
+
+                        //connectorHashMap.get(socketId).signal(data);
+                        // if (type.equalsIgnoreCase("offer")) {
+//                            connectorHashMap.get(socketId).onOfferReceived(data);
+//                        } else if (type.equalsIgnoreCase("answer") && isStarted) {
+//                            connectorHashMap.get(socketId).onAnswerReceived(data);
+//                        } else if (type.equalsIgnoreCase("candidate") && isStarted) {
+//                            connectorHashMap.get(socketId).onIceCandidateReceived(data);
+//                        }
                     }
+                } catch (JSONException e) {
+                    e.printStackTrace();
                 }
+
             });
 
 
@@ -179,7 +211,7 @@ class SignallingClient {
                if ((int)args[0]!= -1){
                    Log.e(TAG, "init: JOIN ROOM SUCCESS "+args[0] );
                    socket.emit("clientReadyGroup",args[0]);
-                   callback.onTryToStart();
+                   //callback.onTryToStart();
                }
             });
             emitInitStatement_join();
@@ -195,7 +227,7 @@ class SignallingClient {
     }
 
     public void emitInitStatement_join() {
-        JSONObject jsonObject =new JSONObject();
+        JSONObject jsonObject = new JSONObject();
         try {
             jsonObject.put("gId",SendCallActivity.roomName);
             MainActivity.mSocket.emit("joinRoom",jsonObject);

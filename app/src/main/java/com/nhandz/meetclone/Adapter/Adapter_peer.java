@@ -47,18 +47,21 @@ public class Adapter_peer extends RecyclerView.Adapter<Adapter_peer.ViewHolder> 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Log.e(TAG, "onBindViewHolder: setMirror" );
-        holder.viewRenderer.init(eglBase.getEglBaseContext(), null);
 
-        holder.viewRenderer.setMirror(true);
-        holder.viewRenderer.setZOrderMediaOverlay(true);
-        VideoTrack videoTrack = connections.get(position).getMediaStream().videoTracks.get(0);
-        AudioTrack audioTrack = connections.get(position).getMediaStream().audioTracks.get(0);
+        if (connections!=null && connections.size()!=0){
+            holder.viewRenderer.setMirror(true);
+            holder.viewRenderer.setZOrderMediaOverlay(true);
+
+            VideoTrack videoTrack = connections.get(position).getMediaStream().videoTracks.get(0);
+            AudioTrack audioTrack = connections.get(position).getMediaStream().audioTracks.get(0);
 
 
 
-        videoTrack.addSink(holder.viewRenderer);
-        audioTrack.setVolume(5f);
-        holder.txtNamePeer.setText(connections.get(position).getSocketId().toString());
+            videoTrack.addSink(holder.viewRenderer);
+            audioTrack.setVolume(5f);
+            holder.txtNamePeer.setText(connections.get(position).getSocketId().toString());
+        }
+
     }
 
     @Override
@@ -78,6 +81,7 @@ public class Adapter_peer extends RecyclerView.Adapter<Adapter_peer.ViewHolder> 
             super(itemView);
             viewRenderer=itemView.findViewById(R.id.itPeer_surface_rendeer);
             txtNamePeer=itemView.findViewById(R.id.itPeer_txtName);
+            viewRenderer.init(eglBase.getEglBaseContext(), null);
         }
     }
 }

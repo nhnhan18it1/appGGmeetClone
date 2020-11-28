@@ -1,5 +1,6 @@
 package com.nhandz.meetclone.Obj;
 
+import android.os.AsyncTask;
 import android.util.Log;
 import android.view.View;
 
@@ -31,7 +32,7 @@ public class SimplePeer  {
 
     private MediaStream localStream;
     private boolean initiator;
-    private PeerConnection peerConnection;
+    private static PeerConnection peerConnection;
     private PeerConnectionFactory peerConnectionFactory;
     private List<PeerConnection.IceServer> iceServers;
     private String socketId;
@@ -46,9 +47,12 @@ public class SimplePeer  {
         this.peerConnectionFactory = peerConnectionFactory;
         this.iceServers = iceServers;
         this.socketId = socketId;
-        socket= MainActivity.mSocket;
+        socket = MainActivity.mSocket;
         //SignallingClient.getInstance().init(this);
-        onTryToStart();
+        Log.e(TAG, "SimplePeer: "+socketId );
+        new Start().execute();
+        //onTryToStart();
+
     }
 
     public void init(){
@@ -77,26 +81,43 @@ public class SimplePeer  {
             }
 
         });
+        onTryToStart();
+    }
+
+    public void signal(JSONObject jsonObject){
+        try {
+            String type = jsonObject.getString("type");
+            Log.e(TAG, "signal: "+type );
+            if (type.equalsIgnoreCase("offer")) {
+                onOfferReceived(jsonObject);
+            } else if (type.equalsIgnoreCase("answer")) {
+                onAnswerReceived(jsonObject);
+            } else if (type.equalsIgnoreCase("candidate")) {
+                onIceCandidateReceived(jsonObject);
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 
     public void emitMessage(SessionDescription message) {
         try {
-            Log.e("SignallingClient", "emitMessage() called with: message = [" + message + "]");
+            //Log.e(TAG , "emitMessage() called with: message = [" + message + "]");
             JSONObject obj = new JSONObject();
             obj.put("type", message.type.canonicalForm());
             obj.put("sdp", message.description);
-            JSONObject signal=new JSONObject();
-            signal.put("signal",obj);
-            signal.put("socket_id", SendCallActivity.peers.get(0));
-            Log.e("emitMessage-vivek1794", signal.toString());
-            socket.emit("signal", signal);
+            JSONObject signalx = new JSONObject();
+            signalx.put("signal",obj);
+            signalx.put("socket_id", socketId);
+            Log.e("emitMessage-vivek1794", signalx.toString());
+            socket.emit("signal", signalx);
 
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
 
-    private void call(){
+    public void call(){
         sdpConstraints = new MediaConstraints();
         sdpConstraints.mandatory.add(
                 new MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true")
@@ -110,7 +131,7 @@ public class SimplePeer  {
                 super.onCreateSuccess(sessionDescription);
                 peerConnection.setLocalDescription(new CustomSdpObserver("localSetLocalDesc"), sessionDescription);
                 Log.e(TAG, "onCreateSuccess SignallingClient emit ");
-                //SignallingClient.getInstance().emitMessage(sessionDescription,socketId);
+                emitMessage(sessionDescription);
             }
 
             @Override
@@ -137,12 +158,12 @@ public class SimplePeer  {
             public void onIceCandidate(IceCandidate iceCandidate) {
                 super.onIceCandidate(iceCandidate);
                 onIceCandidateReceived(peerConnection,iceCandidate);
-                Log.e(TAG, "createPeerConnection: "+iceCandidate );
+                Log.e(TAG, "\n createPeerConnection: "+iceCandidate );
             }
 
             @Override
             public void onAddStream(MediaStream mediaStream) {
-                Log.e(TAG, "onAddStream: Received Remote stream" );
+                Log.e(TAG, "\n onAddStream: Received Remote stream "+mediaStream );
                 super.onAddStream(mediaStream);
                 gotRemoteStream(mediaStream);
             }
@@ -157,6 +178,12 @@ public class SimplePeer  {
 
     private void gotRemoteStream(MediaStream stream) {
         Log.e(TAG, "run: gotRemoteStream"+stream.toString());
+        new SendCallActivity.addRenderFromRemoteStram(
+                new Connector(
+                        peerConnection,
+                        socketId,
+                        stream)).execute();
+        call();
         //connectors.add(new Connector(peerConnection,socketId,stream));
         //adt.notifyDataSetChanged();
 
@@ -173,7 +200,7 @@ public class SimplePeer  {
                                 new CustomSdpObserver("localSetLocal"),
                                 sessionDescription
                         );
-                        //SignallingClient.getInstance().emitMessage(sessionDescription,socketId);
+                        emitMessage(sessionDescription);
                     }
 
                     @Override
@@ -183,13 +210,32 @@ public class SimplePeer  {
                     }
                 },new MediaConstraints()
         );
+        Log.e(TAG, "\n doAnswer: \n" );
     }
 
     public void onIceCandidateReceived(PeerConnection localPeer, IceCandidate iceCandidate) {
         //we have received ice candidate. We can set it to the other peer.
-        //SignallingClient.getInstance().emitIceCandidate(iceCandidate);
+        emitIceCandidate(iceCandidate);
     }
 
+    public void emitIceCandidate(IceCandidate iceCandidate) {
+        try {
+            JSONObject object = new JSONObject();
+            //object.put("type", "candidate");
+            object.put("sdpMLineIndex", iceCandidate.sdpMLineIndex);
+            object.put("sdpMid", String.valueOf(iceCandidate.sdpMLineIndex));
+            object.put("candidate", iceCandidate.sdp);
+            JSONObject candidate = new JSONObject();
+            candidate.put("candidate",object);
+            JSONObject signal = new JSONObject();
+            signal.put("signal",candidate);
+            signal.put("socket_id",socket.id());
+            socket.emit("signal", signal);
+            Log.e(TAG ,"\n emitIceCandidate "+signal.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     //@Override
     public void onRemoteHangUp(String msg) {
@@ -211,16 +257,19 @@ public class SimplePeer  {
         } catch (JSONException e) {
             e.printStackTrace();
         }
+        Log.e(TAG, " \n onOfferReceived: "+data+" \n" );
     }
 
     //@Override
     public void onAnswerReceived(JSONObject data) {
-        Log.e(TAG, "onAnswerReceived: "+data);
+        Log.e(TAG, "\n onAnswerReceived: "+data+"\n");
         try {
             peerConnection.setRemoteDescription(
                     new CustomSdpObserver("localSetRemote"),
                     new SessionDescription(
-                            SessionDescription.Type.fromCanonicalForm(data.getString("type").toLowerCase()),
+                            SessionDescription
+                                    .Type
+                                    .fromCanonicalForm(data.getString("type").toLowerCase()),
                             data.getString("sdp")
                     )
             );
@@ -246,7 +295,7 @@ public class SimplePeer  {
 
     //@Override
     public void onTryToStart() {
-        Log.e(TAG, "onTryToStart: ");
+        Log.e(TAG, "onTryToStart: "+initiator);
         createPeerConnection();
         if (initiator){
             Log.e(TAG, "onTryToStart: call() :: true" );
@@ -270,4 +319,20 @@ public class SimplePeer  {
     public void onNewPeerJoined() {
         Log.e(TAG, "onNewPeerJoined: " );
     }
+
+    public class Start extends AsyncTask<Void,String,Void>{
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            init();
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            Log.e(TAG, "onPostExecute: end Task" );
+        }
+    }
+
 }
