@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".LoginActivity">
+
+    <com.github.florent37.shapeofview.shapes.DiagonalView
+        android:id="@+id/diagonalView"
+        android:layout_width="match_parent"
+        android:layout_height="240dp"
+        android:layout_marginStart="2dp"
+        android:layout_marginEnd="2dp"
+        android:background="@color/bootstrap_brand_info"
+        android:elevation="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:shape_diagonal_angle="10"
+        app:shape_diagonal_position="bottom">
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            >
+
+            <ImageView
+                android:id="@+id/imageView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:src="@drawable/backgroundl"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <com.beardedhen.androidbootstrap.BootstrapCircleThumbnail
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                android:elevation="12dp"
+                android:src="@drawable/backgroundl"
+                android:scaleType="centerCrop"
+                app:bootstrapBrand="primary"
+                app:bootstrapSize="sm"
+                app:hasBorder="true"
+                app:layout_constraintBottom_toBottomOf="@+id/imageView"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="@+id/imageView" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </com.github.florent37.shapeofview.shapes.DiagonalView>
+
+    <com.github.florent37.shapeofview.shapes.ArcView
+        android:layout_width="match_parent"
+        android:layout_height="75dp"
+        android:elevation="4dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+
+        app:shape_arc_height="20dp"
+        app:shape_arc_position="top">
+
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/avtLogin_bottomSlide"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+
+    </com.github.florent37.shapeofview.shapes.ArcView>
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardView2"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        android:layout_marginStart="50dp"
+        android:layout_marginEnd="50dp"
+
+        android:elevation="25dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="12dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="8dp"
+            android:orientation="vertical"
+
+            >
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="30dp"
+                android:layout_gravity="top|left"
+                android:layout_margin="5dp"
+                android:elevation="20dp"
+                android:fontFamily="@font/roboto"
+                android:gravity="top|center"
+                android:text="Login"
+                android:textColor="#E20B0A0A"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="20dp"
+
+                android:layout_gravity="center|start"
+                android:layout_marginStart="5dp"
+                android:layout_marginTop="15dp"
+                android:layout_marginBottom="5dp"
+                android:elevation="20dp"
+                android:fontFamily="@font/roboto"
+                android:gravity="top"
+                android:text="Username"
+                android:textColor="#E20B0A0A"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <com.beardedhen.androidbootstrap.BootstrapEditText
+                android:id="@+id/avtLogin_username"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:layout_gravity="left|center"
+                android:layout_margin="5dp"
+                android:drawableLeft="@drawable/ic_outline_person_24"
+                android:elevation="10dp"
+                app:bootstrapBrand="success"
+                app:bootstrapSize="md"
+                app:roundedCorners="true" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="20dp"
+                android:layout_margin="5dp"
+                android:elevation="5dp"
+                android:fontFamily="@font/roboto"
+                android:text="Password"
+                android:textColor="#E20B0A0A"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <com.beardedhen.androidbootstrap.BootstrapEditText
+                android:id="@+id/avtLogin_password"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:layout_gravity="left|center"
+                android:layout_margin="5dp"
+                android:drawableLeft="@drawable/ic_baseline_lock_24"
+                android:elevation="8dp"
+                app:bootstrapBrand="success"
+                app:bootstrapSize="md"
+                app:roundedCorners="true" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="20dp"
+                android:layout_gravity="center|start"
+                android:layout_margin="5dp"
+                android:elevation="20dp"
+                android:fontFamily="@font/roboto"
+                android:gravity="end"
+                android:paddingEnd="8dp"
+                android:text="Forget password?"
+                android:textColor="#E20B0A0A"
+                android:textSize="12sp"
+                android:textStyle="bold|italic" />
+
+            <com.beardedhen.androidbootstrap.BootstrapButton
+                android:id="@+id/avtLogin_btnLogin"
+                android:layout_width="100dp"
+                android:layout_height="35dp"
+                android:layout_gravity="center"
+                android:layout_marginTop="5dp"
+                android:gravity="center"
+                app:bootstrapBrand="primary"
+                app:bootstrapSize="md"
+                app:bootstrapText="Login"
+                app:roundedCorners="true" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <View
+        android:id="@+id/divider"
+        android:layout_width="match_parent"
+        android:layout_height="2dp"
+        android:layout_marginStart="18dp"
+        android:layout_marginTop="25dp"
+        android:backgroundTint="#141515"
+        android:elevation="12dp"
+        android:alpha="1"
+        android:backgroundTintMode="multiply"
+        android:layout_marginEnd="18dp"
+        android:background="?android:attr/listDivider"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/cardView2" />
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="Bạn chưa có tài khoản? Đăng kí"
+        android:gravity="end|center"
+        android:paddingEnd="22dp"
+        android:fontFamily="@font/roboto"
+        android:textSize="16sp"
+        android:textColor="#053555"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/divider" />
+</androidx.constraintlayout.widget.ConstraintLayout>
